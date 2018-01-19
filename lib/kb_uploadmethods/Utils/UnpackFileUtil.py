@@ -43,8 +43,9 @@ class UnpackFileUtil:
             post_cmd += ' {}/upload'.format(self._staging_service_host())
             return_code = os.popen(post_cmd).read()
             log("return message from server:\n{}".format(return_code))
-            if json.loads(return_code).get('error'):
-                raise ValueError(return_code.get('error'))
+            res = json.loads(return_code)
+            if isinstance(res, dict) and res.get('error'):
+                raise ValueError(res.get('error'))
 
     def _remove_irrelevant_files(self, file_path):
         """
