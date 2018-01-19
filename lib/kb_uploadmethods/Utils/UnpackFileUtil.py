@@ -4,6 +4,7 @@ import uuid
 import json
 import magic
 import shutil
+from ConfigParser import SafeConfigParser
 
 from DataFileUtil.DataFileUtilClient import DataFileUtil
 from KBaseReport.KBaseReportClient import KBaseReport
@@ -16,6 +17,18 @@ def log(message, prefix_newline=False):
 
 class UnpackFileUtil:
 
+    def _staging_service_host(self):
+
+        deployment_path = os.environ["KB_DEPLOYMENT_CONFIG"]
+
+        parser = SafeConfigParser()
+        parser.read(deployment_path)
+
+        endpoint = parser.get('kb_uploadmethods', 'kbase-endpoint')
+        staging_service_host = endpoint + '/kb-ftp-api/v0'
+
+        return staging_service_host
+
     def _file_to_staging(self, file_path_list, subdir_folder=None):
         """
         _file_to_staging: upload file(s) to staging area
@@ -27,9 +40,11 @@ class UnpackFileUtil:
             post_cmd += ' -X POST\\\n'
             post_cmd += ' -F "destPath=/{}{}"\\\n'.format(self.user_id, subdir_folder_str)
             post_cmd += ' -F "uploads=@{}"\\\n'.format(file_path)
-            post_cmd += ' https://ci.kbase.us/services/kb-ftp-api/v0/upload'
+            post_cmd += ' {}/upload'.format(self._staging_service_host())
             return_code = os.popen(post_cmd).read()
             log("return message from server:\n{}".format(return_code))
+            if json.loads(return_code).get('error'):
+                raise ValueError(return_code.get('error'))
 
     def _remove_irrelevant_files(self, file_path):
         """
